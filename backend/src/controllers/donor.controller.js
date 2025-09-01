@@ -1,6 +1,8 @@
 import { validationResult } from 'express-validator';
 import Donor from '../models/Donor.js';
 import { encrypt } from '../utils/crypto.js';
+import { linkBuilder, sendSuccess } from '../utils/response.js';
+import { toDonorJSON, toDonorsList } from '../views/donor.view.js';
 
 export const createDonor = async (req, res, next) => {
   try {
@@ -17,15 +19,7 @@ export const createDonor = async (req, res, next) => {
       availability,
       contact: contact ? encrypt(contact) : undefined,
     });
-
-    res.status(201).json({
-      id: donor._id,
-      name: donor.name,
-      email: donor.email,
-      bloodGroup: donor.bloodGroup,
-      location: donor.location,
-      availability: donor.availability,
-    });
+    return sendSuccess(res, toDonorJSON(donor), { status: 201, message: 'Donor created' }, req);
   } catch (err) {
     next(err);
   }
@@ -37,17 +31,14 @@ export const getDonors = async (req, res, next) => {
     const filter = {};
     if (bloodGroup) filter.bloodGroup = bloodGroup;
     if (location) filter.location = new RegExp(location, 'i');
-    const donors = await Donor.find(filter).sort({ createdAt: -1 }).limit(200);
-    const data = donors.map((d) => ({
-      id: d._id,
-      name: d.name,
-      email: d.email,
-      bloodGroup: d.bloodGroup,
-      location: d.location,
-      availability: d.availability,
-      // contact excluded from list for privacy
-    }));
-    res.json(data);
+    const { page = 1, limit = 10, skip = 0, sort = '-createdAt' } = req.page || {};
+    const [docs, total] = await Promise.all([
+      Donor.find(filter).sort(sort).skip(skip).limit(limit),
+      Donor.countDocuments(filter),
+    ]);
+    const data = toDonorsList(docs);
+    const links = linkBuilder(req.originalUrl, { page, limit }, total);
+    return sendSuccess(res, data, { message: 'Donors retrieved', meta: { total, page, limit }, links }, req);
   } catch (err) {
     next(err);
   }

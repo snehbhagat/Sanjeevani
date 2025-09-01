@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import { createRequest, listRequests } from '../controllers/request.controller.js';
+import pagination from '../middleware/pagination.js';
 
 const router = Router();
 
@@ -16,6 +17,6 @@ router.post(
   createRequest
 );
 
-router.get('/', listRequests);
+router.get('/', pagination(10, 50), listRequests);
 
 export default router;
