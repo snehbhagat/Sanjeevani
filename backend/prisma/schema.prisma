@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Donor {
+  id        String    @id
+  bloodGroup String
+  location   String
+  gender     String
+  age        Int
+  donorType  String
+  donations  Donation[]
+}
+
+model Donation {
+  id        String   @id @default(cuid())
+  donorId   String
+  date      DateTime
+  donor     Donor    @relation(fields: [donorId], references: [id])
+}
+
+model BloodInventory {
+  bloodGroup String  @id
+  units      Int
+}
+
+model User {
+  userId            String   @id
+  name              String
+  emailEncrypted    String
+  totalDonations    Int      @default(0)
+  totalPoints       Int      @default(0)
+  level             Int      @default(1)
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  lastDonationDate  DateTime?
+  activities        Activity[]
+  donations         UserDonation[]
+  badges            UserBadge[]
+}
+
+model UserDonation {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  user      User     @relation(fields: [userId], references: [userId])
+}
+
+model Activity {
+  id           String   @id @default(cuid())
+  userId       String
+  activityType String
+  description  String
+  points       Int      @default(0)
+  date         DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [userId])
+}
+
+model Badge {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  points      Int
+  imagePath   String
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id         String   @id @default(cuid())
+  userId     String
+  badgeId    Int
+  dateEarned DateTime @default(now())
+  badge      Badge    @relation(fields: [badgeId], references: [id])
+  user       User     @relation(fields: [userId], references: [userId])
+
+  @@unique([userId, badgeId])
+}
